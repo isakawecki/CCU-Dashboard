@@ -1,0 +1,46 @@
+/* Cenário de Telemetria Otimizado (GPU Accelerated) */
+.cenario {
+  position: relative;
+  height: 110px;
+  background-color: rgba(135, 206, 235, 0.05);
+  overflow: hidden;
+  border-radius: 12px 12px 0 0;
+  border-bottom: 2px solid #555;
+}
+
+.estrada {
+  position: absolute;
+  bottom: 0; width: 100%; height: 25px;
+  background-color: #333;
+  background-image: repeating-linear-gradient(90deg, #ffd700 0px, #ffd700 15px, transparent 15px, transparent 30px);
+  background-position: 0 10px; background-size: 30px 2px;
+  background-repeat: repeat-x;
+  will-change: background-position; /* Força uso da GPU */
+}
+
+.veiculo {
+  position: absolute;
+  bottom: 10px; left: 50%;
+  font-size: 3rem;
+  will-change: transform; /* Força uso da GPU */
+  animation: trepidar 0.15s linear infinite alternate;
+}
+
+.grid-overlay {
+  position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+  background-image: linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), 
+                    linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
+  background-size: 20px 20px; 
+  pointer-events: none;
+}
+
+/* Keyframes da Nova Versão */
+@keyframes passarEstrada { 
+  from { background-position: 0px 10px; } 
+  to { background-position: 30px 10px; } 
+}
+
+@keyframes trepidar { 
+  from { transform: translateX(-50%) translateY(0px); } 
+  to { transform: translateX(-50%) translateY(-3px); } 
+}
