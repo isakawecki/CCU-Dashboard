@@ -1,53 +1,146 @@
-export default function Telemetria({ frota, categoria, vsatOnline }) {
+import { useEffect } from 'react';
+
+export default function Telemetria({ frota, categoria, statusLinks }) {
   const veiculosExibidos = frota.filter(v => v.tipo === categoria);
+
+  // Web Audio API - Sintetizador Eletrônico de Sirene
+  useEffect(() => {
+    let audioCtx = null;
+    let osc = null;
+    let intervalId = null;
+
+    if (categoria === "Ambulância") {
+      try {
+        const AudioContext = window.AudioContext || window.webkitAudioContext;
+        audioCtx = new AudioContext();
+
+        if (audioCtx.state === 'suspended') { 
+          audioCtx.resume(); 
+        }
+
+        osc = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+
+        osc.type = 'sine';
+        gainNode.gain.value = 0.2; // Volume
+        osc.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        osc.start();
+
+        let isHigh = false;
+        osc.frequency.setValueAtTime(700, audioCtx.currentTime);
+        intervalId = setInterval(() => {
+          isHigh = !isHigh;
+          if(osc) osc.frequency.setValueAtTime(isHigh ? 960 : 700, audioCtx.currentTime);
+        }, 500);
+      } catch (e) {
+        console.warn("Áudio bloqueado pelo navegador. Interaja com a página primeiro.");
+      }
+    }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+      if (osc) {
+        try { osc.stop(); osc.disconnect(); } catch(e){}
+      }
+      if (audioCtx && audioCtx.state !== 'closed') { 
+        audioCtx.close(); 
+      }
+    };
+  }, [categoria]);
+
+  // Regra Visual de Dependência (para exibição no cabeçalho)
+  let dependeciaId = 3;
+  let nomeLink = "Roteamento OSPF";
+  if (categoria === "Caminhão") { dependeciaId = 2; nomeLink = "Link VSAT BGAN"; }
+  else if (categoria === "Ônibus") { dependeciaId = 4; nomeLink = "Sessão BGP"; }
+  else if (categoria === "Moto") { dependeciaId = 5; nomeLink = "LTE-Móvel"; }
+  else if (categoria === "Carro" || categoria === "Caminhonete") { dependeciaId = 1; nomeLink = "Link VSAT Principal"; }
+
+  const linkCategoriaOnline = statusLinks[dependeciaId];
 
   return (
     <div className="container-fluid px-4 mt-4">
       <div className="d-flex justify-content-between align-items-center border-bottom border-secondary pb-2 mb-4">
-        <h4 className="fw-light text-info m-0">Frota: <span className="fw-bold text-white">{categoria}</span></h4>
-        {!vsatOnline && <span className="badge bg-danger fs-6">⚠ SEM COMUNICAÇÃO COM O HUB</span>}
+        <h4 className="fw-light text-info m-0">
+          Telemetria Tática: <span className="fw-bold text-white">{categoria}</span>
+        </h4>
+        {!linkCategoriaOnline && (
+          <span className="badge bg-danger fs-6 p-2">⚠ COMUNICAÇÃO PERDIDA ({nomeLink})</span>
+        )}
       </div>
+
       <div className="row">
-        {veiculosExibidos.length === 0 ? (
-          <p className="text-secondary">Nenhum ativo operando nesta categoria.</p>
-        ) : (
-          veiculosExibidos.map(veiculo => {
-            const veiculoAtivo = vsatOnline && veiculo.vel !== "0";
-            return (
-              <div key={veiculo.id} className="col-12 col-sm-6 col-lg-4 col-xl-3 mb-4">
-                <div className={`card glass-card h-100 ${!vsatOnline ? 'offline-mode border-danger' : ''}`}>
-                  <div className="cenario">
-                    <div className="grid-overlay"></div>
-                    <div className="estrada" style={{ animation: veiculoAtivo ? `passarEstrada ${veiculo.anim} linear infinite` : 'none' }}></div>
-                    <div className="veiculo" style={{ animationPlayState: veiculoAtivo ? 'running' : 'paused' }}>{veiculo.modelo}</div>
+        {veiculosExibidos.map((veiculo, index) => {
+          // Motor de Regras Granulares por tipo de veículo
+          let veiculoAtivo = true;
+          if (veiculo.tipo === "Carro" || veiculo.tipo === "Caminhonete") { veiculoAtivo = statusLinks[1]; }
+          else if (veiculo.tipo === "Caminhão") { veiculoAtivo = statusLinks[2]; }
+          else if (veiculo.tipo === "Ônibus") { veiculoAtivo = statusLinks[4]; }
+          else if (veiculo.tipo === "Moto") { veiculoAtivo = statusLinks[5]; }
+          else { veiculoAtivo = statusLinks[3]; } // Fallback para OSPF (Vans, SUVs, Ambulâncias, etc.)
+
+          const combustivel = 100 - (index * 15);
+
+          return (
+            <div key={veiculo.id} className="col-12 col-md-6 col-lg-4 col-xl-3 mb-4">
+              <div className={`card glass-card h-100 ${!veiculoAtivo ? 'offline-mode border-danger' : ''}`}>
+                <div className="cenario">
+                  <div className="parallax-bg" style={{ animationPlayState: veiculoAtivo ? 'running' : 'paused' }}></div>
+                  <div className="estrada">
+                    <div className="linhas-estrada" style={{ animationPlayState: veiculoAtivo ? 'running' : 'paused' }}></div>
                   </div>
-                  <div className="card-body">
-                    <div className="d-flex justify-content-between mb-3 align-items-center">
-                      <h6 className="fw-bold text-info m-0 fs-5">{veiculo.id}</h6>
-                      <span className={`badge ${vsatOnline ? (veiculo.vel === "0" ? 'bg-secondary' : 'bg-success') : 'bg-danger'}`}>
-                        {vsatOnline ? 'ONLINE' : 'LINK PERDIDO'}
+                  {veiculoAtivo && (
+                    <div className="vento">
+                      <div className="linha-vento" style={{ top: '15px', width: '50px', animationDuration: '0.4s' }}></div>
+                      <div className="linha-vento" style={{ top: '35px', width: '30px', animationDuration: '0.6s', animationDelay: '0.2s' }}></div>
+                    </div>
+                  )}
+                  <div className="veiculo-container" style={{ animationPlayState: veiculoAtivo ? 'running' : 'paused' }}>
+                    {veiculo.modelo}
+                  </div>
+                </div>
+
+                <div className="card-body">
+                  <div className="d-flex justify-content-between mb-3 align-items-center">
+                    <h5 className="fw-bold text-info m-0">{veiculo.id}</h5>
+                    <span className={`badge ${veiculoAtivo ? 'bg-success' : 'bg-danger'}`}>
+                      {veiculoAtivo ? 'SINAL OK' : 'LINK PERDIDO'}
+                    </span>
+                  </div>
+
+                  <div className="mb-3">
+                    <div className="d-flex justify-content-between small text-white">
+                      <span>Bateria / Combustível</span>
+                      <span>{combustivel}%</span>
+                    </div>
+                    <div className="progress-tech">
+                      <div 
+                        className="progress-tech-bar" 
+                        style={{ width: `${combustivel}%`, background: combustivel < 30 ? '#dc3545' : '#0dcaf0' }}>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="row text-secondary small">
+                    <div className="col-6 mb-2">
+                      <strong className="text-white">Velocidade:</strong><br/>
+                      <span className={veiculoAtivo ? "text-info fw-bold" : ""}>
+                        {veiculoAtivo ? `${veiculo.vel} km/h` : '0 km/h'}
                       </span>
                     </div>
-                    <div className="row text-secondary small">
-                      <div className="col-6 mb-2">
-                        <strong className="text-white">Velocidade:</strong><br/>
-                        {vsatOnline ? `${veiculo.vel} km/h` : '-- km/h'}
-                      </div>
-                      <div className="col-6 mb-2">
-                        <strong className="text-white">Uptime:</strong><br/>
-                        {vsatOnline ? veiculo.uptime : 'DESCONECTADO'}
-                      </div>
-                      <div className="col-12 mt-2">
-                        <strong className="text-white">Último GPS Conhecido:</strong><br/>
-                        <span className={`font-monospace ${vsatOnline ? 'text-warning' : 'text-danger'}`}>{veiculo.gps}</span>
-                      </div>
+                    <div className="col-6 mb-2 text-end">
+                      <strong className="text-white">GPS Atual:</strong><br/>
+                      <span className="font-monospace text-warning">
+                        {veiculoAtivo ? veiculo.gps : 'OFFLINE'}
+                      </span>
                     </div>
                   </div>
                 </div>
               </div>
-            );
-          })
-        )}
+            </div>
+          );
+        })}
       </div>
     </div>
   );

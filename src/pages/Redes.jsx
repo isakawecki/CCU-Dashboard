@@ -1,39 +1,51 @@
-export default function Redes({ dados, vsatOnline, setVsatOnline }) {
+export default function Redes({ dados, statusLinks, toggleLink }) {
   return (
     <div className="container-fluid px-4 mt-4">
-      <h4 className="fw-light text-info border-bottom border-secondary pb-2 mb-4">Core de Redes e Hub Satelital</h4>
+      <h4 className="fw-light text-info border-bottom border-secondary pb-2 mb-4">
+        Monitoramento de Conectividade
+      </h4>
+
       <div className="row">
         {dados.map(item => {
-          const isHub = item.id === 1;
-          const statusAtual = isHub ? (vsatOnline ? 'UP' : 'DOWN') : item.status;
-          const latenciaAtual = isHub ? (vsatOnline ? item.latencia : 'TIMEOUT') : item.latencia;
+          const isOnline = statusLinks[item.id];
+          const latenciaAtual = isOnline ? item.latencia : 'TIMEOUT';
+          const usoBanda = isOnline ? Math.floor(Math.random() * 40) + 40 : 0;
 
           return (
-            <div key={item.id} className="col-12 col-sm-6 col-lg-4 col-xl-3 mb-4">
-              <div className={`card glass-card h-100 ${!vsatOnline && isHub ? 'border-danger' : ''}`}>
+            <div key={item.id} className="col-12 col-md-6 col-xl-3 mb-4">
+              <div className={`card glass-card h-100 ${!isOnline ? 'border-danger' : 'border-info'}`}>
                 <div className="card-body d-flex flex-column justify-content-between">
-                  <div className="d-flex justify-content-between align-items-start mb-3">
+                  <div className="d-flex justify-content-between align-items-start mb-2">
                     <div>
-                      <h6 className="mb-0 fw-bold">{item.tipo || item.protocolo}</h6>
-                      <small className="text-secondary d-block">Alvo: {item.target}</small>
-                      <span className={`badge mt-2 ${statusAtual === 'UP' ? 'bg-success' : statusAtual === 'STANDBY' ? 'bg-warning text-dark' : 'bg-danger'}`}>
-                        {statusAtual}
-                      </span>
+                      <h6 className="mb-0 fw-bold d-flex align-items-center">
+                        <span className={`led-indicator ${isOnline ? 'led-up' : 'led-down'}`}></span>
+                        {item.tipo}
+                      </h6>
+                      <small className="text-secondary d-block mt-1">Alvo: {item.target}</small>
                     </div>
                     <div className="text-end">
                       <small className="text-secondary d-block">Latência</small>
-                      <strong className={latenciaAtual === 'TIMEOUT' ? "text-danger" : parseInt(latenciaAtual) > 500 ? "text-warning" : "text-success"}>
+                      <strong className={latenciaAtual === 'TIMEOUT' ? "text-danger" : "text-success"}>
                         {latenciaAtual}
                       </strong>
                     </div>
                   </div>
-                  {isHub && (
-                    <button
-                      onClick={() => setVsatOnline(!vsatOnline)}
-                      className={`btn btn-sm w-100 mt-2 fw-bold shadow-sm ${vsatOnline ? 'btn-outline-danger' : 'btn-success'}`}>
-                      {vsatOnline ? '⚠ Simular Queda VSAT' : '🔄 Restaurar Conexão'}
-                    </button>
-                  )}
+
+                  <div className="mb-4">
+                    <div className="d-flex justify-content-between small text-secondary">
+                      <span>Tráfego de Dados</span>
+                      <span>{usoBanda}%</span>
+                    </div>
+                    <div className="progress-tech">
+                      <div className="progress-tech-bar bg-info" style={{ width: `${usoBanda}%` }}></div>
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={() => toggleLink(item.id)} 
+                    className={`btn btn-sm w-100 fw-bold shadow-sm ${isOnline ? 'btn-outline-danger' : 'btn-success'}`}>
+                    {isOnline ? '⚠ Simular Queda' : '🔄 Restaurar Conexão'}
+                  </button>
                 </div>
               </div>
             </div>
