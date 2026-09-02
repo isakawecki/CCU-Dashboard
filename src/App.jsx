@@ -1,41 +1,24 @@
-import { useState, useEffect } from 'react';
-import Redes from './pages/Redes';
-import Telemetria from './pages/Telemetria';
-import './pages/telemetria.css';
+// src/App.jsx
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, useNavigate, Link, useLocation } from 'react-router-dom';
 
-const dadosIniciais = {
-  infraestrutura: [
-    { id: 1, tipo: "Link VSAT (Hub Principal)", target: "Satélite Star One D2", latencia: "580ms" },
-    { id: 2, tipo: "Link VSAT (BGAN Backup)", target: "Satélite Inmarsat", latencia: "850ms" },
-    { id: 3, tipo: "Roteamento OSPF", target: "Core Interno (10.0.0.1)", latencia: "2ms" },
-    { id: 4, tipo: "Sessão BGP", target: "Operadora AS-1042", latencia: "12ms" },
-    { id: 5, tipo: "Link LTE-Móvel", target: "Antena Celular ERB", latencia: "45ms" }
-  ],
-  frota: [
-    { id: "V-01", modelo: "🚌", tipo: "Ônibus", vel: "85", gps: "-23.55, -46.63" },
-    { id: "V-02", modelo: "🚚", tipo: "Caminhão", vel: "70", gps: "-22.90, -43.20" },
-    { id: "V-03", modelo: "🏍", tipo: "Moto", vel: "110", gps: "-19.92, -43.93" },
-    { id: "V-04", modelo: "🚗", tipo: "Carro", vel: "110", gps: "-25.42, -49.27" },
-    { id: "V-05", modelo: "🛻", tipo: "Caminhonete", vel: "80", gps: "-30.03, -51.23" },
-    { id: "V-06", modelo: "🚐", tipo: "Van", vel: "75", gps: "-15.79, -47.88" },
-    { id: "V-07", modelo: "🚙", tipo: "SUV", vel: "100", gps: "-12.97, -38.50" },
-    { id: "V-08", modelo: "🏎", tipo: "Esportivo", vel: "140", gps: "-03.11, -60.02" },
-    { id: "V-09", modelo: "🚜", tipo: "Trator", vel: "30", gps: "-16.68, -49.25" },
-    { id: "V-10", modelo: "🚑", tipo: "Ambulância", vel: "120", gps: "-20.31, -40.31" }
-  ]
-};
+// Importa os estilos da sua pasta pages
+import './pages/telemetria.css'; 
 
-export default function App() {
+// Importa os dados e as páginas conforme sua árvore de pastas
+import { dadosIniciais } from './dados';
+import { Redes } from './pages/Redes';
+import { Telemetria } from './pages/Telemetria';
+
+const categoriasVeiculos = ["Ônibus", "Caminhão", "Moto", "Carro", "Caminhonete", "Van", "SUV", "Esportivo", "Trator", "Ambulância"];
+const rotasDisponiveis = ["/", ...categoriasVeiculos.map(c => `/frota/${c}`)];
+
+function DashboardRouter() {
   const [statusLinks, setStatusLinks] = useState({ 1: true, 2: true, 3: true, 4: true, 5: true });
-  
-  const toggleLink = (id) => { 
-    setStatusLinks(prev => ({ ...prev, [id]: !prev[id] })); 
-  };
+  const toggleLink = (id) => setStatusLinks(prev => ({ ...prev, [id]: !prev[id] }));
 
-  const categoriasVeiculos = ["Ônibus", "Caminhão", "Moto", "Carro", "Caminhonete", "Van", "SUV", "Esportivo", "Trator", "Ambulância"];
-  const ordemTelas = ["links", ...categoriasVeiculos];
-  
-  const [indiceTela, setIndiceTela] = useState(0);
+  const navigate = useNavigate();
+  const location = useLocation();
   const [tempoRestante, setTempoRestante] = useState(5);
 
   useEffect(() => {
@@ -43,12 +26,12 @@ export default function App() {
       const timer = setTimeout(() => setTempoRestante(tempoRestante - 1), 1000);
       return () => clearTimeout(timer);
     } else {
-      setIndiceTela((prev) => (prev + 1) % ordemTelas.length);
+      const indiceAtual = rotasDisponiveis.indexOf(decodeURIComponent(location.pathname));
+      const proximoIndice = (indiceAtual + 1) % rotasDisponiveis.length;
+      navigate(rotasDisponiveis[proximoIndice]);
       setTempoRestante(5);
     }
-  }, [tempoRestante]);
-
-  const telaAtual = ordemTelas[indiceTela];
+  }, [tempoRestante, location.pathname, navigate]);
 
   return (
     <div>
@@ -56,14 +39,8 @@ export default function App() {
         <div className="container-fluid flex-column align-items-start px-3 py-2">
           <div className="d-flex w-100 justify-content-between align-items-center mb-3">
             <span className="navbar-brand fw-bold text-info m-0 d-flex align-items-center">
-              <a 
-                href="https://www.google.com/maps" 
-                target="_blank" 
-                rel="noopener noreferrer" 
-                title="Abrir Google Maps" 
-                className="spinning-globe">
-              </a>
-              NOC COMMAND CENTER
+              <a href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" title="Google Maps" className="spinning-globe"></a>
+              CCU COMMAND CENTER
             </span>
             <span className="badge bg-transparent border border-info text-info px-3 py-2">
               AUTO-SWAP: 00:0{tempoRestante}
@@ -71,12 +48,15 @@ export default function App() {
           </div>
 
           <div className="nav-scroll w-100 gap-2">
-            <button
-              onClick={() => { setIndiceTela(0); setTempoRestante(5); }}
-              className={`btn btn-sm text-nowrap px-4 py-2 ${telaAtual === 'links' ? 'btn-info text-dark fw-bold shadow' : 'btn-outline-info text-white'}`}>
-              📡 Links Comunicação
-            </button>
-            {categoriasVeiculos.map((cat, idx) => {
+            <Link 
+              to="/" 
+              onClick={() => setTempoRestante(5)} 
+              className={`btn btn-sm text-nowrap px-4 py-2 ${location.pathname === '/' ? 'btn-info text-dark fw-bold shadow' : 'btn-outline-info text-white'}`}>
+              📡 Redes e Conectividade
+            </Link>
+
+            {categoriasVeiculos.map((cat) => {
+              const rotaAtiva = decodeURIComponent(location.pathname) === `/frota/${cat}`;
               let iconeBotao = "🚚";
               if (cat === "Moto") iconeBotao = "🏍";
               else if (cat === "Carro" || cat === "SUV" || cat === "Esportivo") iconeBotao = "🚗";
@@ -85,12 +65,13 @@ export default function App() {
               else if (cat === "Trator") iconeBotao = "🚜";
 
               return (
-                <button
-                  key={cat}
-                  onClick={() => { setIndiceTela(idx + 1); setTempoRestante(5); }}
-                  className={`btn btn-sm text-nowrap px-3 py-2 ${telaAtual === cat ? 'btn-light text-dark fw-bold shadow' : 'btn-outline-light text-white'}`}>
+                <Link 
+                  key={cat} 
+                  to={`/frota/${cat}`} 
+                  onClick={() => setTempoRestante(5)} 
+                  className={`btn btn-sm text-nowrap px-3 py-2 ${rotaAtiva ? 'btn-light text-dark fw-bold shadow' : 'btn-outline-light text-white'}`}>
                   {iconeBotao} {cat}
-                </button>
+                </Link>
               );
             })}
           </div>
@@ -98,12 +79,19 @@ export default function App() {
       </nav>
 
       <main>
-        {telaAtual === 'links' ? (
-          <Redes dados={dadosIniciais.infraestrutura} statusLinks={statusLinks} toggleLink={toggleLink} />
-        ) : (
-          <Telemetria frota={dadosIniciais.frota} categoria={telaAtual} statusLinks={statusLinks} />
-        )}
+        <Routes>
+          <Route path="/" element={<Redes dados={dadosIniciais.infraestrutura} statusLinks={statusLinks} toggleLink={toggleLink} />} />
+          <Route path="/frota/:categoria" element={<Telemetria frota={dadosIniciais.frota} statusLinks={statusLinks} />} />
+        </Routes>
       </main>
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <DashboardRouter />
+    </BrowserRouter>
   );
 }

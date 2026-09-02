@@ -1,10 +1,12 @@
-export default function Redes({ dados, statusLinks, toggleLink }) {
+// src/pages/Redes.jsx
+import React from 'react';
+
+export function Redes({ dados, statusLinks, toggleLink }) {
   return (
     <div className="container-fluid px-4 mt-4">
       <h4 className="fw-light text-info border-bottom border-secondary pb-2 mb-4">
         Monitoramento de Conectividade
       </h4>
-
       <div className="row">
         {dados.map(item => {
           const isOnline = statusLinks[item.id];
@@ -30,17 +32,14 @@ export default function Redes({ dados, statusLinks, toggleLink }) {
                       </strong>
                     </div>
                   </div>
-
                   <div className="mb-4">
                     <div className="d-flex justify-content-between small text-secondary">
-                      <span>Tráfego de Dados</span>
-                      <span>{usoBanda}%</span>
+                      <span>Tráfego de Dados</span><span>{usoBanda}%</span>
                     </div>
                     <div className="progress-tech">
                       <div className="progress-tech-bar bg-info" style={{ width: `${usoBanda}%` }}></div>
                     </div>
                   </div>
-
                   <button 
                     onClick={() => toggleLink(item.id)} 
                     className={`btn btn-sm w-100 fw-bold shadow-sm ${isOnline ? 'btn-outline-danger' : 'btn-success'}`}>

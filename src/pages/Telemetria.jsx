@@ -1,9 +1,11 @@
-import { useEffect } from 'react';
+// src/pages/Telemetria.jsx
+import React, { useEffect } from 'react';
+import { useParams } from 'react-router-dom';
 
-export default function Telemetria({ frota, categoria, statusLinks }) {
+export function Telemetria({ frota, statusLinks }) {
+  const { categoria } = useParams();
   const veiculosExibidos = frota.filter(v => v.tipo === categoria);
 
-  // Web Audio API - Sintetizador Eletrônico de Sirene
   useEffect(() => {
     let audioCtx = null;
     let osc = null;
@@ -13,17 +15,15 @@ export default function Telemetria({ frota, categoria, statusLinks }) {
       try {
         const AudioContext = window.AudioContext || window.webkitAudioContext;
         audioCtx = new AudioContext();
-
-        if (audioCtx.state === 'suspended') { 
-          audioCtx.resume(); 
-        }
+        if (audioCtx.state === 'suspended') { audioCtx.resume(); }
 
         osc = audioCtx.createOscillator();
         const gainNode = audioCtx.createGain();
 
-        osc.type = 'sine';
-        gainNode.gain.value = 0.2; // Volume
-        osc.connect(gainNode);
+        osc.type = 'sine'; 
+        gainNode.gain.value = 0.2;
+
+        osc.connect(gainNode); 
         gainNode.connect(audioCtx.destination);
         osc.start();
 
@@ -34,22 +34,17 @@ export default function Telemetria({ frota, categoria, statusLinks }) {
           if(osc) osc.frequency.setValueAtTime(isHigh ? 960 : 700, audioCtx.currentTime);
         }, 500);
       } catch (e) {
-        console.warn("Áudio bloqueado pelo navegador. Interaja com a página primeiro.");
+        console.warn("Áudio bloqueado. Interaja com a página primeiro.");
       }
     }
 
     return () => {
       if (intervalId) clearInterval(intervalId);
-      if (osc) {
-        try { osc.stop(); osc.disconnect(); } catch(e){}
-      }
-      if (audioCtx && audioCtx.state !== 'closed') { 
-        audioCtx.close(); 
-      }
+      if (osc) { try { osc.stop(); osc.disconnect(); } catch(e){} }
+      if (audioCtx && audioCtx.state !== 'closed') { audioCtx.close(); }
     };
   }, [categoria]);
 
-  // Regra Visual de Dependência (para exibição no cabeçalho)
   let dependeciaId = 3;
   let nomeLink = "Roteamento OSPF";
   if (categoria === "Caminhão") { dependeciaId = 2; nomeLink = "Link VSAT BGAN"; }
@@ -72,13 +67,12 @@ export default function Telemetria({ frota, categoria, statusLinks }) {
 
       <div className="row">
         {veiculosExibidos.map((veiculo, index) => {
-          // Motor de Regras Granulares por tipo de veículo
           let veiculoAtivo = true;
           if (veiculo.tipo === "Carro" || veiculo.tipo === "Caminhonete") { veiculoAtivo = statusLinks[1]; }
           else if (veiculo.tipo === "Caminhão") { veiculoAtivo = statusLinks[2]; }
           else if (veiculo.tipo === "Ônibus") { veiculoAtivo = statusLinks[4]; }
           else if (veiculo.tipo === "Moto") { veiculoAtivo = statusLinks[5]; }
-          else { veiculoAtivo = statusLinks[3]; } // Fallback para OSPF (Vans, SUVs, Ambulâncias, etc.)
+          else { veiculoAtivo = statusLinks[3]; }
 
           const combustivel = 100 - (index * 15);
 
@@ -100,7 +94,6 @@ export default function Telemetria({ frota, categoria, statusLinks }) {
                     {veiculo.modelo}
                   </div>
                 </div>
-
                 <div className="card-body">
                   <div className="d-flex justify-content-between mb-3 align-items-center">
                     <h5 className="fw-bold text-info m-0">{veiculo.id}</h5>
@@ -108,11 +101,9 @@ export default function Telemetria({ frota, categoria, statusLinks }) {
                       {veiculoAtivo ? 'SINAL OK' : 'LINK PERDIDO'}
                     </span>
                   </div>
-
                   <div className="mb-3">
                     <div className="d-flex justify-content-between small text-white">
-                      <span>Bateria / Combustível</span>
-                      <span>{combustivel}%</span>
+                      <span>Bateria / Combustível</span><span>{combustivel}%</span>
                     </div>
                     <div className="progress-tech">
                       <div 
@@ -121,7 +112,6 @@ export default function Telemetria({ frota, categoria, statusLinks }) {
                       </div>
                     </div>
                   </div>
-
                   <div className="row text-secondary small">
                     <div className="col-6 mb-2">
                       <strong className="text-white">Velocidade:</strong><br/>
@@ -130,10 +120,8 @@ export default function Telemetria({ frota, categoria, statusLinks }) {
                       </span>
                     </div>
                     <div className="col-6 mb-2 text-end">
-                      <strong className="text-white">GPS Atual:</strong><br/>
-                      <span className="font-monospace text-warning">
-                        {veiculoAtivo ? veiculo.gps : 'OFFLINE'}
-                      </span>
+                      <strong className="text-white">GPS:</strong><br/>
+                      <span className="font-monospace text-warning">{veiculoAtivo ? veiculo.gps : 'OFFLINE'}</span>
                     </div>
                   </div>
                 </div>
