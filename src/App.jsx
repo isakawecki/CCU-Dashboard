@@ -1,12 +1,10 @@
 // src/App.jsx
+
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, useNavigate, Link, useLocation } from 'react-router-dom';
 
-// Importa os estilos da sua pasta pages
-import './pages/telemetria.css'; 
-
-// Importa os dados e as páginas conforme sua árvore de pastas
-import { dadosIniciais } from './dados';
+// Importação do CSS e das suas páginas existentes
+import './pages/telemetria.css';
 import { Redes } from './pages/Redes';
 import { Telemetria } from './pages/Telemetria';
 
@@ -14,13 +12,32 @@ const categoriasVeiculos = ["Ônibus", "Caminhão", "Moto", "Carro", "Caminhonet
 const rotasDisponiveis = ["/", ...categoriasVeiculos.map(c => `/frota/${c}`)];
 
 function DashboardRouter() {
+  // Estado inicial completo incluindo o objeto noc para evitar falhas de leitura
+  const [dados, setDados] = useState({ infraestrutura: [], frota: [], noc: {} });
+  const [carregando, setCarregando] = useState(true);
   const [statusLinks, setStatusLinks] = useState({ 1: true, 2: true, 3: true, 4: true, 5: true });
+
   const toggleLink = (id) => setStatusLinks(prev => ({ ...prev, [id]: !prev[id] }));
 
   const navigate = useNavigate();
   const location = useLocation();
   const [tempoRestante, setTempoRestante] = useState(5);
 
+  // Requisição HTTP via fetch para buscar dados do banco SQLite
+  useEffect(() => {
+    fetch('http://localhost:3000/api/dados')
+      .then(response => response.json())
+      .then(data => {
+        setDados(data);
+        setCarregando(false);
+      })
+      .catch(error => {
+        console.error("Falha ao comunicar com o servidor de banco de dados:", error);
+        setCarregando(false);
+      });
+  }, []);
+
+  // Timer do Roteamento Temporizado (Auto-Swap)
   useEffect(() => {
     if (tempoRestante > 0) {
       const timer = setTimeout(() => setTempoRestante(tempoRestante - 1), 1000);
@@ -33,13 +50,28 @@ function DashboardRouter() {
     }
   }, [tempoRestante, location.pathname, navigate]);
 
+  // Spinner de carregamento enquanto o Back-End responde
+  if (carregando) {
+    return (
+      <div className="d-flex justify-content-center align-items-center vh-100 text-info bg-black">
+        <div className="spinner-border" style={{ width: '4rem', height: '4rem' }}></div>
+      </div>
+    );
+  }
+
   return (
     <div>
       <nav className="navbar navbar-dark bg-black bg-opacity-75 shadow-lg border-bottom border-info sticky-top">
         <div className="container-fluid flex-column align-items-start px-3 py-2">
           <div className="d-flex w-100 justify-content-between align-items-center mb-3">
-            <span className="navbar-brand fw-bold text-info m-0 d-flex align-items-center">
-              <a href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer" title="Google Maps" className="spinning-globe"></a>
+            <span className="navbar-brand fw-bold text-info m-0 d-flex align-items-center gap-2">
+              <a
+                href={dados.noc?.latitude ? `https://www.google.com/maps/search/?api=1&query=${dados.noc.latitude},${dados.noc.longitude}` : "#"}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Abrir Base NOC (SENAI Vila Leopoldina)"
+                className="spinning-globe"
+              ></a>
               CCU COMMAND CENTER
             </span>
             <span className="badge bg-transparent border border-info text-info px-3 py-2">
@@ -48,9 +80,9 @@ function DashboardRouter() {
           </div>
 
           <div className="nav-scroll w-100 gap-2">
-            <Link 
-              to="/" 
-              onClick={() => setTempoRestante(5)} 
+            <Link
+              to="/"
+              onClick={() => setTempoRestante(5)}
               className={`btn btn-sm text-nowrap px-4 py-2 ${location.pathname === '/' ? 'btn-info text-dark fw-bold shadow' : 'btn-outline-info text-white'}`}>
               📡 Redes e Conectividade
             </Link>
@@ -65,10 +97,10 @@ function DashboardRouter() {
               else if (cat === "Trator") iconeBotao = "🚜";
 
               return (
-                <Link 
-                  key={cat} 
-                  to={`/frota/${cat}`} 
-                  onClick={() => setTempoRestante(5)} 
+                <Link
+                  key={cat}
+                  to={`/frota/${cat}`}
+                  onClick={() => setTempoRestante(5)}
                   className={`btn btn-sm text-nowrap px-3 py-2 ${rotaAtiva ? 'btn-light text-dark fw-bold shadow' : 'btn-outline-light text-white'}`}>
                   {iconeBotao} {cat}
                 </Link>
@@ -80,8 +112,8 @@ function DashboardRouter() {
 
       <main>
         <Routes>
-          <Route path="/" element={<Redes dados={dadosIniciais.infraestrutura} statusLinks={statusLinks} toggleLink={toggleLink} />} />
-          <Route path="/frota/:categoria" element={<Telemetria frota={dadosIniciais.frota} statusLinks={statusLinks} />} />
+          <Route path="/" element={<Redes dados={dados.infraestrutura} statusLinks={statusLinks} toggleLink={toggleLink} />} />
+          <Route path="/frota/:categoria" element={<Telemetria frota={dados.frota} statusLinks={statusLinks} />} />
         </Routes>
       </main>
     </div>
